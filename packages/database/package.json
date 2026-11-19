@@ -5,8 +5,8 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "dependencies": {
-    "@lifeos/core": "workspace:*",
-    "@lifeos/shared-types": "workspace:*",
+    "@lifeos/core": "*",
+    "@lifeos/shared-types": "*",
     "dexie": "^4.4.7",
     "drizzle-orm": "^0.45.4",
     "expo-sqlite": "~58.0.17"
