@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@lifeos/core": ["../../packages/core/src"],
+      "@lifeos/core/*": ["../../packages/core/src/*"],
+      "@lifeos/database": ["../../packages/database/src"],
+      "@lifeos/database/*": ["../../packages/database/src/*"],
+      "@lifeos/shared-types": ["../../packages/shared-types/src"],
+      "@lifeos/shared-types/*": ["../../packages/shared-types/src/*"],
+      "@lifeos/ui": ["../../packages/ui/src"],
+      "@lifeos/ui/*": ["../../packages/ui/src/*"],
+      "@lifeos/alfred": ["../../packages/alfred/src"],
+      "@lifeos/alfred/*": ["../../packages/alfred/src/*"]
+    }
+  },
+  "include": [
+    "src",
+    "../../packages/*/src"
+  ]
+}

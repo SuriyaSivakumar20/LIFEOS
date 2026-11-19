@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Default: Dark Theme */
+  --bg-primary: #242321;
+  --bg-secondary: #302E2A;
+  --bg-elevated: #3A3833;
+  --accent-primary: #F28C28;
+  --accent-hover: #E07B18;
+  --accent-muted: rgba(242, 140, 40, 0.15);
+  --text-primary: #F4F1EB;
+  --text-secondary: #A8A39A;
+  --text-muted: #7D776E;
+  --border-color: #45413B;
+  --border-light: #57524A;
+  --status-success: #62B68A;
+  --status-warning: #E6AD54;
+  --status-error: #D86B63;
+  color-scheme: dark;
+}
+
+html.light {
+  /* Alternative: Light Theme */
+  --bg-primary: #F7F6F2;
+  --bg-secondary: #EFECE6;
+  --bg-elevated: #FFFFFF;
+  --accent-primary: #D47318;
+  --accent-hover: #B86010;
+  --accent-muted: rgba(212, 115, 24, 0.12);
+  --text-primary: #242321;
+  --text-secondary: #66625B;
+  --text-muted: #969085;
+  --border-color: #DDD8CE;
+  --border-light: #ECE7DD;
+  --status-success: #2E8555;
+  --status-warning: #C2841E;
+  --status-error: #C54B43;
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
