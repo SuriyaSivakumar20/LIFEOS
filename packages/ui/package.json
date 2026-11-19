@@ -1,0 +1,13 @@
+{
+  "name": "@lifeos/ui",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "lucide-react-native": "^1.73.0",
+    "react": "19.3.0",
+    "react-native": "0.88.1"
+  },
+  "private": true
+}

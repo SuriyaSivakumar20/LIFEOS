@@ -1,0 +1,15 @@
+{
+  "name": "@lifeos/database",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@lifeos/core": "workspace:*",
+    "@lifeos/shared-types": "workspace:*",
+    "dexie": "^4.4.7",
+    "drizzle-orm": "^0.45.4",
+    "expo-sqlite": "~58.0.17"
+  },
+  "private": true
+}
