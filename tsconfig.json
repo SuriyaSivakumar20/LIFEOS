@@ -10,6 +10,8 @@
     "jsx": "react-jsx",
     "forceConsistentCasingInFileNames": true,
     "ignoreDeprecations": "6.0",
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
     "baseUrl": ".",
     "paths": {
       "@lifeos/core": ["./packages/core/src"],

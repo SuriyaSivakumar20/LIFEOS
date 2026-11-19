@@ -23,7 +23,8 @@ import type {
   UUID,
   ISOTimestamp,
 } from '@lifeos/shared-types';
-import { generateUUID, getNowUTC, calculateStreak } from '@lifeos/core';
+import { generateUUID, getNowUTC } from '../../../core/src/entities/index.ts';
+import { calculateStreak } from '../../../core/src/calculations/habits.ts';
 import type { SQLiteAdapter } from '../adapters/sqlite/index';
 import type { IndexedDBAdapter } from '../adapters/indexeddb/index';
 import type { IDatabaseAdapter } from '@lifeos/shared-types';
