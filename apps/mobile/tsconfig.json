@@ -1,0 +1,33 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@lifeos/core": ["../../packages/core/src"],
+      "@lifeos/core/*": ["../../packages/core/src/*"],
+      "@lifeos/database": ["../../packages/database/src"],
+      "@lifeos/database/*": ["../../packages/database/src/*"],
+      "@lifeos/shared-types": ["../../packages/shared-types/src"],
+      "@lifeos/shared-types/*": ["../../packages/shared-types/src/*"],
+      "@lifeos/ui": ["../../packages/ui/src"],
+      "@lifeos/ui/*": ["../../packages/ui/src/*"],
+      "@lifeos/alfred": ["../../packages/alfred/src"],
+      "@lifeos/alfred/*": ["../../packages/alfred/src/*"],
+      "@lifeos/voice": ["../../packages/voice/src"],
+      "@lifeos/voice/*": ["../../packages/voice/src/*"],
+      "@lifeos/notifications": ["../../packages/notifications/src"],
+      "@lifeos/notifications/*": ["../../packages/notifications/src/*"]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts",
+    "../../packages/*/src/**/*.ts",
+    "../../packages/*/src/**/*.tsx"
+  ]
+}
