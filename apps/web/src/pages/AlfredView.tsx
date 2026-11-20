@@ -78,16 +78,21 @@ export const AlfredView: React.FC = () => {
         <Badge variant="success">100% Local Device</Badge>
       </div>
 
-      {/* Privacy & Vendor Disclosure Callout */}
-      <div className="bg-bg-elevated border border-boundary rounded-lg p-3 text-xs text-content-secondary space-y-1 shrink-0">
-        <div className="flex items-center gap-1.5 font-semibold text-content-primary">
-          <ShieldCheck size={14} className="text-status-success" />
-          <span>Local Privacy & Cloud Decoupling</span>
+        {/* Privacy & Vendor Disclosure Callout */}
+        <div className="bg-bg-elevated border border-boundary rounded-lg p-3 text-xs text-content-secondary space-y-1.5 shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 font-semibold text-content-primary">
+              <ShieldCheck size={14} className="text-status-success" />
+              <span>Local Privacy & Cloud Decoupling</span>
+            </div>
+            <span className="text-[10px] px-2 py-0.5 rounded bg-bg-secondary border border-boundary text-content-muted font-medium">
+              Remote AI: Disabled (Explicit Consent Required)
+            </span>
+          </div>
+          <p className="text-[11px] text-content-muted leading-relaxed">
+            Chat messages are persisted strictly in your browser's IndexedDB (<code className="text-content-secondary">chat_messages</code> table). External cloud AI APIs are not called without explicit user configuration and consent.
+          </p>
         </div>
-        <p className="text-[11px] text-content-muted leading-relaxed">
-          Chat sessions are stored strictly in your browser's IndexedDB. External AI cloud integration is completely optional and requires explicit user consent and credentials.
-        </p>
-      </div>
 
       {/* Voice Vendor Disclosure Modal */}
       {showVoiceDisclosure && (
@@ -127,7 +132,7 @@ export const AlfredView: React.FC = () => {
           </div>
         </div>
 
-        {/* Persisted User Messages from Database */}
+        {/* Persisted User and Assistant Messages from Database */}
         {chatMessages.map((msg) => (
           <div
             key={msg.id}
@@ -143,20 +148,30 @@ export const AlfredView: React.FC = () => {
               {msg.role === 'user' ? <User size={15} /> : <Bot size={15} />}
             </div>
             <div
-              className={`p-3.5 rounded-lg text-xs leading-relaxed ${
+              className={`p-3.5 rounded-lg text-xs leading-relaxed space-y-1.5 ${
                 msg.role === 'user'
                   ? 'bg-accent-primary text-white font-medium'
                   : 'bg-bg-elevated border border-boundary text-content-primary'
               }`}
             >
-              <p>{msg.content}</p>
-              <span
-                className={`text-[9px] block mt-1 ${
-                  msg.role === 'user' ? 'text-white/70' : 'text-content-muted'
-                }`}
-              >
-                {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
+              <div className="flex items-center justify-between gap-3 text-[10px]">
+                <span
+                  className={`font-bold tracking-wide uppercase ${
+                    msg.role === 'user' ? 'text-white/90' : 'text-accent-primary'
+                  }`}
+                >
+                  {msg.role === 'user' ? 'You • Stored Locally' : 'Alfred • Local Offline Response'}
+                </span>
+                <span
+                  className={msg.role === 'user' ? 'text-white/70' : 'text-content-muted'}
+                >
+                  {new Date(msg.createdAt).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+              </div>
+              <p className="whitespace-pre-wrap">{msg.content}</p>
             </div>
           </div>
         ))}

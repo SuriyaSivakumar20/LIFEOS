@@ -30,8 +30,7 @@ export const HabitsView: React.FC = () => {
         title: title.trim(),
         frequency,
         targetDaysPerWeek: Number(targetDays),
-        color: '#F28C28',
-        icon: 'flame',
+        isArchived: false,
       });
 
       setTitle('');
@@ -128,11 +127,10 @@ export const HabitsView: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => toggleHabitToday(habit.id)}
-                    className={`w-6 h-6 rounded-md flex items-center justify-center border font-bold text-xs transition-colors ${
-                      habit.isCompletedToday
-                        ? 'bg-status-success border-status-success text-white'
-                        : 'border-boundary text-transparent hover:border-accent-primary'
-                    }`}
+                    className={`w-6 h-6 rounded-md flex items-center justify-center border font-bold text-xs transition-colors ${habit.isCompletedToday
+                      ? 'bg-status-success border-status-success text-white'
+                      : 'border-boundary text-transparent hover:border-accent-primary'
+                      }`}
                     title={habit.isCompletedToday ? 'Mark incomplete for today' : 'Mark done for today'}
                   >
                     ✓

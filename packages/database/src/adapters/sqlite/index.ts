@@ -5,8 +5,11 @@ export class SQLiteAdapter implements IDatabaseAdapter {
   readonly platform = 'native' as const;
   private db: any = null;
   private initialized = false;
+  private dbName: string;
 
-  constructor(private dbName = 'lifeos.db') {}
+  constructor(dbName = 'lifeos.db') {
+    this.dbName = dbName;
+  }
 
   async initialize(): Promise<void> {
     if (this.initialized && this.db) {

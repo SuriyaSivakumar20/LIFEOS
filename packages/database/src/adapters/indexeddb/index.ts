@@ -6,8 +6,11 @@ export class IndexedDBAdapter implements IDatabaseAdapter {
   readonly platform = 'web' as const;
   private db: LifeOSDexieDB | null = null;
   private initialized = false;
+  private dbName: string;
 
-  constructor(private dbName = 'lifeos_indexeddb') {}
+  constructor(dbName = 'lifeos_indexeddb') {
+    this.dbName = dbName;
+  }
 
   async initialize(): Promise<void> {
     if (this.initialized && this.db) {

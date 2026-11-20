@@ -16,6 +16,7 @@ import type {
 import {
   initializeDatabase,
   getRepositories,
+  getDatabaseAdapter,
 } from '@lifeos/database';
 import {
   calculateFinancialSummary,
@@ -25,8 +26,12 @@ import {
 } from '@lifeos/core';
 
 export interface AppState {
+  isInitializing: boolean;
   isDbReady: boolean;
   dbError: string | null;
+  actionError: string | null;
+  clearActionError: () => void;
+
   themeMode: ThemeMode;
   userProfile: UserProfile | null;
   settings: AppSettings | null;
@@ -54,6 +59,7 @@ export interface AppState {
   // Reactive Lifecycle Actions
   init: () => Promise<void>;
   retryInit: () => Promise<void>;
+  resetDatabaseSafely: () => Promise<void>;
   refreshMoney: () => Promise<void>;
   refreshTasks: () => Promise<void>;
   refreshHabits: () => Promise<void>;
@@ -83,8 +89,12 @@ export interface AppState {
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
+  isInitializing: true,
   isDbReady: false,
   dbError: null,
+  actionError: null,
+  clearActionError: () => set({ actionError: null }),
+
   themeMode: 'dark',
   userProfile: null,
   settings: null,
@@ -111,7 +121,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   init: async () => {
     try {
-      set({ dbError: null });
+      set({ isInitializing: true, dbError: null, actionError: null });
       await initializeDatabase();
       const repos = getRepositories();
 
@@ -124,6 +134,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       set({
         isDbReady: true,
+        isInitializing: false,
         userProfile: profile,
         settings,
         themeMode,
@@ -134,6 +145,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       console.error('Database initialization failed:', err);
       set({
         isDbReady: false,
+        isInitializing: false,
         dbError: err instanceof Error ? err.message : String(err),
       });
     }
@@ -141,6 +153,21 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   retryInit: async () => {
     await get().init();
+  },
+
+  resetDatabaseSafely: async () => {
+    try {
+      set({ isInitializing: true, dbError: null, actionError: null });
+      const adapter = getDatabaseAdapter();
+      await adapter.resetDatabase();
+      await get().init();
+    } catch (err) {
+      console.error('Database reset failed:', err);
+      set({
+        isInitializing: false,
+        dbError: `Reset failed: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
   },
 
   refreshMoney: async () => {
@@ -164,39 +191,48 @@ export const useAppStore = create<AppState>((set, get) => ({
       });
     } catch (err) {
       console.error('Failed to refresh money data', err);
+      set({ actionError: 'Failed to refresh financial data from database' });
+      throw err;
     }
   },
 
   refreshTasks: async () => {
     try {
       const repos = getRepositories();
-      const [tasks, reminders] = await Promise.all([
+      const [allTasks, allReminders] = await Promise.all([
         repos.tasks.getAll(),
-        repos.reminders.getUpcoming(5),
+        repos.reminders.getAll(),
       ]);
-      set({ tasks, reminders });
+      set({ tasks: allTasks, reminders: allReminders });
     } catch (err) {
       console.error('Failed to refresh tasks', err);
+      set({ actionError: 'Failed to refresh tasks from database' });
+      throw err;
     }
   },
 
   refreshHabits: async () => {
     try {
       const repos = getRepositories();
+      const rawHabits = await repos.habits.getAll();
       const todayStr = formatLocalDateString(new Date());
-      const [allHabits, todayLogs] = await Promise.all([
-        repos.habits.getAll(),
-        repos.habits.getTodayLogs(todayStr),
-      ]);
 
-      const habitsWithStatus: HabitWithTodayStatus[] = allHabits.map((h) => ({
-        ...h,
-        isCompletedToday: isHabitCompletedForDate(todayLogs, h.id, todayStr),
-      }));
+      const habitsWithStatus: HabitWithTodayStatus[] = await Promise.all(
+        rawHabits.map(async (h) => {
+          const logs = await repos.habits.getLogsForHabit(h.id);
+          const isCompletedToday = isHabitCompletedForDate(logs, h.id, todayStr);
+          return {
+            ...h,
+            isCompletedToday,
+          };
+        })
+      );
 
       set({ habits: habitsWithStatus });
     } catch (err) {
       console.error('Failed to refresh habits', err);
+      set({ actionError: 'Failed to refresh habits from database' });
+      throw err;
     }
   },
 
@@ -207,6 +243,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ journalEntries: entries });
     } catch (err) {
       console.error('Failed to refresh journal', err);
+      set({ actionError: 'Failed to refresh journal from database' });
+      throw err;
     }
   },
 
@@ -232,6 +270,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     } catch (err) {
       console.error('Failed to refresh chat', err);
+      set({ actionError: 'Failed to refresh chat from database' });
+      throw err;
     }
   },
 
@@ -246,104 +286,253 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   addTransaction: async (tx) => {
-    const repos = getRepositories();
-    const created = await repos.transactions.create(tx);
-    await get().refreshMoney();
-    return created;
+    if (!get().isDbReady) {
+      const err = new Error('Database is not initialized. Please wait or retry.');
+      set({ actionError: err.message });
+      throw err;
+    }
+    try {
+      const repos = getRepositories();
+      const created = await repos.transactions.create(tx);
+      await get().refreshMoney();
+      set({ actionError: null });
+      return created;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      set({ actionError: msg });
+      throw err;
+    }
   },
 
   deleteTransaction: async (id) => {
-    const repos = getRepositories();
-    await repos.transactions.delete(id);
-    await get().refreshMoney();
+    if (!get().isDbReady) {
+      const err = new Error('Database is not initialized. Please wait or retry.');
+      set({ actionError: err.message });
+      throw err;
+    }
+    try {
+      const repos = getRepositories();
+      await repos.transactions.delete(id);
+      await get().refreshMoney();
+      set({ actionError: null });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      set({ actionError: msg });
+      throw err;
+    }
   },
 
   addTask: async (task) => {
-    const repos = getRepositories();
-    const created = await repos.tasks.create(task);
-    await get().refreshTasks();
-    return created;
+    if (!get().isDbReady) {
+      const err = new Error('Database is not initialized. Please wait or retry.');
+      set({ actionError: err.message });
+      throw err;
+    }
+    try {
+      const repos = getRepositories();
+      const created = await repos.tasks.create(task);
+      await get().refreshTasks();
+      set({ actionError: null });
+      return created;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      set({ actionError: msg });
+      throw err;
+    }
   },
 
   toggleTaskStatus: async (id) => {
-    const repos = getRepositories();
-    const task = await repos.tasks.getById(id);
-    if (!task) return;
+    if (!get().isDbReady) {
+      const err = new Error('Database is not initialized. Please wait or retry.');
+      set({ actionError: err.message });
+      throw err;
+    }
+    try {
+      const repos = getRepositories();
+      const task = await repos.tasks.getById(id);
+      if (!task) return;
 
-    const nextStatus = task.status === 'completed' ? 'pending' : 'completed';
-    const completedAt = nextStatus === 'completed' ? new Date().toISOString() : null;
-    await repos.tasks.update(id, { status: nextStatus, completedAt });
-    await get().refreshTasks();
+      const nextStatus = task.status === 'completed' ? 'pending' : 'completed';
+      const completedAt = nextStatus === 'completed' ? new Date().toISOString() : null;
+      await repos.tasks.update(id, { status: nextStatus, completedAt });
+      await get().refreshTasks();
+      set({ actionError: null });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      set({ actionError: msg });
+      throw err;
+    }
   },
 
   deleteTask: async (id) => {
-    const repos = getRepositories();
-    await repos.tasks.delete(id);
-    await get().refreshTasks();
+    if (!get().isDbReady) {
+      const err = new Error('Database is not initialized. Please wait or retry.');
+      set({ actionError: err.message });
+      throw err;
+    }
+    try {
+      const repos = getRepositories();
+      await repos.tasks.delete(id);
+      await get().refreshTasks();
+      set({ actionError: null });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      set({ actionError: msg });
+      throw err;
+    }
   },
 
   addHabit: async (habit) => {
-    const repos = getRepositories();
-    await repos.habits.create({
-      ...habit,
-      isArchived: false,
-    });
-    await get().refreshHabits();
+    if (!get().isDbReady) {
+      const err = new Error('Database is not initialized. Please wait or retry.');
+      set({ actionError: err.message });
+      throw err;
+    }
+    try {
+      const repos = getRepositories();
+      await repos.habits.create({
+        ...habit,
+        isArchived: false,
+      });
+      await get().refreshHabits();
+      set({ actionError: null });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      set({ actionError: msg });
+      throw err;
+    }
   },
 
   toggleHabitToday: async (habitId) => {
-    const repos = getRepositories();
-    const todayStr = formatLocalDateString(new Date());
-    const target = get().habits.find((h) => h.id === habitId);
-    if (!target) return;
-
-    if (target.isCompletedToday) {
-      await repos.habits.removeCompletion(habitId, todayStr);
-    } else {
-      await repos.habits.logCompletion(habitId, todayStr);
+    if (!get().isDbReady) {
+      const err = new Error('Database is not initialized. Please wait or retry.');
+      set({ actionError: err.message });
+      throw err;
     }
-    await get().refreshHabits();
+    try {
+      const repos = getRepositories();
+      const todayStr = formatLocalDateString(new Date());
+      const target = get().habits.find((h) => h.id === habitId);
+      if (!target) return;
+
+      if (target.isCompletedToday) {
+        await repos.habits.removeCompletion(habitId, todayStr);
+      } else {
+        await repos.habits.logCompletion(habitId, todayStr);
+      }
+      await get().refreshHabits();
+      set({ actionError: null });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      set({ actionError: msg });
+      throw err;
+    }
   },
 
   deleteHabit: async (id) => {
-    const repos = getRepositories();
-    await repos.habits.delete(id);
-    await get().refreshHabits();
+    if (!get().isDbReady) {
+      const err = new Error('Database is not initialized. Please wait or retry.');
+      set({ actionError: err.message });
+      throw err;
+    }
+    try {
+      const repos = getRepositories();
+      await repos.habits.delete(id);
+      await get().refreshHabits();
+      set({ actionError: null });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      set({ actionError: msg });
+      throw err;
+    }
   },
 
   addJournalEntry: async (entry) => {
-    const repos = getRepositories();
-    const created = await repos.journal.create(entry);
-    await get().refreshJournal();
-    return created;
+    if (!get().isDbReady) {
+      const err = new Error('Database is not initialized. Please wait or retry.');
+      set({ actionError: err.message });
+      throw err;
+    }
+    try {
+      const repos = getRepositories();
+      const created = await repos.journal.create(entry);
+      await get().refreshJournal();
+      set({ actionError: null });
+      return created;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      set({ actionError: msg });
+      throw err;
+    }
   },
 
   deleteJournalEntry: async (id) => {
-    const repos = getRepositories();
-    await repos.journal.delete(id);
-    await get().refreshJournal();
+    if (!get().isDbReady) {
+      const err = new Error('Database is not initialized. Please wait or retry.');
+      set({ actionError: err.message });
+      throw err;
+    }
+    try {
+      const repos = getRepositories();
+      await repos.journal.delete(id);
+      await get().refreshJournal();
+      set({ actionError: null });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      set({ actionError: msg });
+      throw err;
+    }
   },
 
   setThemeMode: async (mode) => {
-    set({ themeMode: mode });
-    const repos = getRepositories();
-    const current = await repos.settings.getSettings();
-    if (current) {
-      await repos.settings.saveSettings({ ...current, themeMode: mode });
+    if (!get().isDbReady) {
+      const err = new Error('Database is not initialized. Please wait or retry.');
+      set({ actionError: err.message });
+      throw err;
+    }
+    try {
+      set({ themeMode: mode });
+      const repos = getRepositories();
+      const current = await repos.settings.getSettings();
+      if (current) {
+        await repos.settings.saveSettings({ ...current, themeMode: mode });
+      }
+      set({ actionError: null });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      set({ actionError: msg });
+      throw err;
     }
   },
 
   updateProfile: async (updates) => {
-    const repos = getRepositories();
-    const current = await repos.settings.getProfile();
-    if (current) {
-      const updated = await repos.settings.saveProfile({ ...current, ...updates });
-      set({ userProfile: updated });
-      await get().refreshMoney();
+    if (!get().isDbReady) {
+      const err = new Error('Database is not initialized. Please wait or retry.');
+      set({ actionError: err.message });
+      throw err;
+    }
+    try {
+      const repos = getRepositories();
+      const current = await repos.settings.getProfile();
+      if (current) {
+        const updated = await repos.settings.saveProfile({ ...current, ...updates });
+        set({ userProfile: updated });
+        await get().refreshMoney();
+      }
+      set({ actionError: null });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      set({ actionError: msg });
+      throw err;
     }
   },
 
   sendChatMessage: async (content) => {
+    if (!get().isDbReady) {
+      const err = new Error('Database is not initialized. Please wait or retry.');
+      set({ actionError: err.message });
+      throw err;
+    }
     const trimmed = content.trim();
     if (!trimmed) return;
 
@@ -356,10 +545,19 @@ export const useAppStore = create<AppState>((set, get) => ({
         set({ activeSessionId: sessionId });
       }
 
+      // 1. Persist user message locally in IndexedDB
       await repos.chat.addMessage(sessionId, 'user', trimmed);
+
+      // 2. Persist local offline rule-based response (Zero external cloud AI)
+      const offlineGuidance = 'Note recorded locally in IndexedDB. External AI cloud services are disabled by default to protect your privacy.';
+      await repos.chat.addMessage(sessionId, 'assistant', offlineGuidance);
+
       await get().refreshChat();
+      set({ actionError: null });
     } catch (err) {
       console.error('Failed to save chat message to local database', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      set({ actionError: msg });
       throw err;
     }
   },
