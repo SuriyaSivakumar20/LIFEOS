@@ -6,18 +6,19 @@ import {
   MicOff,
   ShieldCheck,
   Info,
-  Clock,
-  User,
   Bot,
+  User,
 } from 'lucide-react';
-import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
+import { useAppStore } from '../stores/use-app-store';
 
 export const AlfredView: React.FC = () => {
+  const { chatMessages, sendChatMessage } = useAppStore();
   const [inputMessage, setInputMessage] = useState('');
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [showVoiceDisclosure, setShowVoiceDisclosure] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
   const suggestions = [
     "What are my top priorities for today?",
@@ -37,14 +38,23 @@ export const AlfredView: React.FC = () => {
   const handleConfirmVoice = () => {
     setShowVoiceDisclosure(false);
     setIsVoiceActive(true);
-    // In Sprint 5, Web Speech API will be actively bound here
+    // In Sprint 5, Web Speech API will be actively bound
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputMessage.trim()) return;
-    alert(`Message submitted: "${inputMessage.trim()}". Full local chat session persistence will be connected in Sprint 4.`);
-    setInputMessage('');
+    const text = inputMessage.trim();
+    if (!text || isSending) return;
+
+    setIsSending(true);
+    try {
+      await sendChatMessage(text);
+      setInputMessage('');
+    } catch (err) {
+      alert('Failed to save message: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -75,7 +85,7 @@ export const AlfredView: React.FC = () => {
           <span>Local Privacy & Cloud Decoupling</span>
         </div>
         <p className="text-[11px] text-content-muted leading-relaxed">
-          Chat sessions are stored strictly in your browser's IndexedDB. External AI cloud integration is completely optional and disabled by default.
+          Chat sessions are stored strictly in your browser's IndexedDB. External AI cloud integration is completely optional and requires explicit user consent and credentials.
         </p>
       </div>
 
@@ -117,23 +127,59 @@ export const AlfredView: React.FC = () => {
           </div>
         </div>
 
-        {/* Suggestion Chips */}
-        <div className="pt-4">
-          <span className="text-[11px] font-semibold text-content-muted uppercase tracking-wider block mb-2">
-            Quick Queries
-          </span>
-          <div className="flex flex-wrap gap-2">
-            {suggestions.map((sug, i) => (
-              <button
-                key={i}
-                onClick={() => setInputMessage(sug)}
-                className="text-xs px-3 py-1.5 rounded-md bg-bg-elevated hover:bg-bg-secondary border border-boundary text-content-primary transition-colors text-left"
+        {/* Persisted User Messages from Database */}
+        {chatMessages.map((msg) => (
+          <div
+            key={msg.id}
+            className={`flex items-start gap-3 max-w-xl ${
+              msg.role === 'user' ? 'ml-auto flex-row-reverse' : ''
+            }`}
+          >
+            <div
+              className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-white ${
+                msg.role === 'user' ? 'bg-boundary-light' : 'bg-accent-primary'
+              }`}
+            >
+              {msg.role === 'user' ? <User size={15} /> : <Bot size={15} />}
+            </div>
+            <div
+              className={`p-3.5 rounded-lg text-xs leading-relaxed ${
+                msg.role === 'user'
+                  ? 'bg-accent-primary text-white font-medium'
+                  : 'bg-bg-elevated border border-boundary text-content-primary'
+              }`}
+            >
+              <p>{msg.content}</p>
+              <span
+                className={`text-[9px] block mt-1 ${
+                  msg.role === 'user' ? 'text-white/70' : 'text-content-muted'
+                }`}
               >
-                {sug}
-              </button>
-            ))}
+                {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
           </div>
-        </div>
+        ))}
+
+        {/* Suggestion Chips */}
+        {chatMessages.length === 0 && (
+          <div className="pt-4">
+            <span className="text-[11px] font-semibold text-content-muted uppercase tracking-wider block mb-2">
+              Quick Queries
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {suggestions.map((sug, i) => (
+                <button
+                  key={i}
+                  onClick={() => setInputMessage(sug)}
+                  className="text-xs px-3 py-1.5 rounded-md bg-bg-elevated hover:bg-bg-secondary border border-boundary text-content-primary transition-colors text-left"
+                >
+                  {sug}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Input Form */}
@@ -165,7 +211,7 @@ export const AlfredView: React.FC = () => {
           type="submit"
           variant="primary"
           icon={<Send size={16} />}
-          disabled={!inputMessage.trim()}
+          disabled={!inputMessage.trim() || isSending}
         >
           Send
         </Button>

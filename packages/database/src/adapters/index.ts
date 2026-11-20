@@ -1,4 +1,3 @@
-import { Platform } from 'react-native';
 import type { IDatabaseAdapter } from '@lifeos/shared-types';
 import { IndexedDBAdapter } from './indexeddb/index';
 
@@ -10,8 +9,8 @@ export function getDatabaseAdapter(): IDatabaseAdapter {
   }
 
   const isWeb =
-    Platform.OS === 'web' ||
-    (typeof window !== 'undefined' && typeof window.indexedDB !== 'undefined');
+    typeof window !== 'undefined' ||
+    (typeof navigator !== 'undefined' && navigator.product !== 'ReactNative');
 
   let adapter: IDatabaseAdapter;
   if (isWeb) {

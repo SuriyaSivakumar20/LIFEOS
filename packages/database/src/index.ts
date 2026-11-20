@@ -1,11 +1,11 @@
-export * from './schema/ddl';
-export * from './schema/dexie-schema';
-export * from './migrations/index';
-export * from './adapters/indexeddb/index';
-export * from './adapters/index';
-export * from './repositories/index';
+export * from './schema/ddl.ts';
+export * from './schema/dexie-schema.ts';
+export * from './migrations/index.ts';
+export * from './adapters/indexeddb/index.ts';
+export * from './adapters/index.ts';
+export * from './repositories/index.ts';
 
-import { getDatabaseAdapter } from './adapters/index';
+import { getDatabaseAdapter } from './adapters/index.ts';
 import {
   TransactionRepository,
   AccountRepository,
@@ -16,7 +16,7 @@ import {
   JournalRepository,
   SettingsRepository,
   ChatRepository,
-} from './repositories/index';
+} from './repositories/index.ts';
 
 export interface DatabaseRepositories {
   transactions: TransactionRepository;

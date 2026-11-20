@@ -1,6 +1,6 @@
 import type { IDatabaseAdapter } from '@lifeos/shared-types';
-import { LifeOSDexieDB } from '../../schema/dexie-schema';
-import { runDexieMigrations } from '../../migrations/index';
+import { LifeOSDexieDB } from '../../schema/dexie-schema.ts';
+import { runDexieMigrations } from '../../migrations/index.ts';
 
 export class IndexedDBAdapter implements IDatabaseAdapter {
   readonly platform = 'web' as const;

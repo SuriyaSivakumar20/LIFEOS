@@ -1,8 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Settings,
   User,
-  Globe,
   Sun,
   Moon,
   Shield,
@@ -10,7 +8,6 @@ import {
   Upload,
   HardDrive,
   Trash2,
-  Lock,
   Check,
 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
@@ -19,19 +16,32 @@ import { Badge } from '../components/ui/Badge';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { useTheme } from '../hooks/use-theme';
 import { usePersistentStorage } from '../hooks/use-persistent-storage';
+import { useAppStore } from '../stores/use-app-store';
 
 export const SettingsView: React.FC = () => {
   const { theme, resolvedTheme, setTheme } = useTheme();
-  const { isPersisted, isSupported, requestPersistence, quotaBytes, usageBytes } = usePersistentStorage();
+  const { isPersisted, isSupported, requestPersistence } = usePersistentStorage();
+  const { userProfile, updateProfile } = useAppStore();
 
-  const [name, setName] = useState('User');
-  const [selectedCurrency, setSelectedCurrency] = useState('INR');
+  const [name, setName] = useState(userProfile?.name || 'User');
+  const [selectedCurrency, setSelectedCurrency] = useState(userProfile?.currency || 'INR');
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  useEffect(() => {
+    if (userProfile) {
+      setName(userProfile.name);
+      setSelectedCurrency(userProfile.currency);
+    }
+  }, [userProfile]);
 
   const currencies = ['INR', 'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY'];
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    await updateProfile({
+      name: name.trim() || 'User',
+      currency: selectedCurrency,
+    });
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2500);
   };
@@ -44,9 +54,12 @@ export const SettingsView: React.FC = () => {
     alert('JSON Backup restore with Zod schema validation is staged for Sprint 5.');
   };
 
-  const handleClearData = () => {
+  const handleClearData = async () => {
     if (confirm('CAUTION: Are you sure you want to permanently erase all local IndexedDB data? This action cannot be undone.')) {
-      alert('Data reset action acknowledged.');
+      if (typeof window !== 'undefined' && window.indexedDB) {
+        window.indexedDB.deleteDatabase('lifeos_indexeddb');
+        window.location.reload();
+      }
     }
   };
 
@@ -125,7 +138,7 @@ export const SettingsView: React.FC = () => {
             </Button>
             {saveSuccess && (
               <span className="flex items-center gap-1 text-xs text-status-success font-medium">
-                <Check size={14} /> Saved successfully!
+                <Check size={14} /> Saved successfully to local database!
               </span>
             )}
           </div>

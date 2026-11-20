@@ -13,13 +13,26 @@ import {
   Bell,
   Clock,
   ShieldCheck,
+  Check,
 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { SectionHeader } from '../components/ui/SectionHeader';
+import { useAppStore } from '../stores/use-app-store';
+import { formatMinorUnits, formatLocalDateString } from '@lifeos/core';
 
 export const HomeView: React.FC = () => {
+  const {
+    userProfile,
+    financialSummary,
+    tasks,
+    habits,
+    reminders,
+    toggleTaskStatus,
+    toggleHabitToday,
+  } = useAppStore();
+
   const now = new Date();
   const hours = now.getHours();
   const greeting =
@@ -32,6 +45,12 @@ export const HomeView: React.FC = () => {
     year: 'numeric',
   });
 
+  const currency = userProfile?.currency || 'INR';
+  const todayStr = formatLocalDateString(now);
+  const todayTasks = tasks.filter((t) => !t.dueDate || t.dueDate.startsWith(todayStr));
+  const pendingTasks = todayTasks.filter((t) => t.status === 'pending');
+  const completedHabitsCount = habits.filter((h) => h.isCompletedToday).length;
+
   return (
     <div className="space-y-6">
       {/* Top Banner / Greeting */}
@@ -41,7 +60,7 @@ export const HomeView: React.FC = () => {
             Dashboard
           </span>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-content-primary">
-            {greeting}, User
+            {greeting}, {userProfile?.name || 'User'}
           </h1>
           <p className="text-xs md:text-sm text-content-secondary mt-1 flex items-center gap-2">
             <Clock size={14} className="text-accent-primary" />
@@ -73,22 +92,22 @@ export const HomeView: React.FC = () => {
             <div className="flex items-center gap-2 text-content-secondary">
               <Wallet size={18} className="text-accent-primary" />
               <span className="text-xs font-medium uppercase tracking-wider">
-                Financial Balance (INR)
+                Financial Balance ({currency})
               </span>
             </div>
             <Link to="/money">
               <Button variant="ghost" size="sm" className="text-xs">
-                View All →
+                View Ledger →
               </Button>
             </Link>
           </div>
 
           <div>
             <div className="text-3xl md:text-4xl font-extrabold text-content-primary tracking-tight">
-              ₹0.00
+              {formatMinorUnits(financialSummary.availableBalanceMinor, currency)}
             </div>
             <p className="text-xs text-content-muted mt-0.5">
-              Net available balance computed from local records
+              Available balance computed from {financialSummary.transactionCount} stored records
             </p>
           </div>
 
@@ -98,7 +117,9 @@ export const HomeView: React.FC = () => {
                 <ArrowDownLeft size={13} className="text-status-success" />
                 <span>Income</span>
               </div>
-              <div className="text-sm font-bold text-status-success">₹0.00</div>
+              <div className="text-sm font-bold text-status-success">
+                {formatMinorUnits(financialSummary.totalIncomeMinor, currency)}
+              </div>
             </div>
 
             <div className="p-2.5 rounded-md bg-bg-secondary border border-boundary/40">
@@ -106,7 +127,9 @@ export const HomeView: React.FC = () => {
                 <ArrowUpRight size={13} className="text-status-warning" />
                 <span>Expenses</span>
               </div>
-              <div className="text-sm font-bold text-status-warning">₹0.00</div>
+              <div className="text-sm font-bold text-status-warning">
+                {formatMinorUnits(financialSummary.totalExpensesMinor, currency)}
+              </div>
             </div>
 
             <div className="p-2.5 rounded-md bg-bg-secondary border border-boundary/40">
@@ -114,7 +137,9 @@ export const HomeView: React.FC = () => {
                 <RotateCcw size={13} className="text-accent-primary" />
                 <span>Refunds</span>
               </div>
-              <div className="text-sm font-bold text-accent-primary">₹0.00</div>
+              <div className="text-sm font-bold text-accent-primary">
+                {formatMinorUnits(financialSummary.totalRefundsMinor, currency)}
+              </div>
             </div>
           </div>
         </Card>
@@ -160,63 +185,138 @@ export const HomeView: React.FC = () => {
         <Card variant="elevated" className="space-y-3">
           <SectionHeader
             title="Today's Tasks"
+            subtitle={`${pendingTasks.length} pending`}
             action={
               <Link to="/planner">
-                <Button variant="ghost" size="sm">View</Button>
+                <Button variant="ghost" size="sm">Manage</Button>
               </Link>
             }
           />
-          <div className="p-4 rounded-md bg-bg-secondary/60 border border-boundary/40 text-center space-y-2">
-            <CheckCircle2 size={24} className="mx-auto text-content-muted" />
-            <p className="text-xs text-content-secondary">
-              No tasks scheduled for today.
-            </p>
-            <Link to="/planner">
-              <Button size="sm" variant="outline" icon={<Plus size={14} />}>
-                Add Task
-              </Button>
-            </Link>
-          </div>
+          {pendingTasks.length > 0 ? (
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {pendingTasks.slice(0, 4).map((task) => (
+                <div
+                  key={task.id}
+                  onClick={() => toggleTaskStatus(task.id)}
+                  className="flex items-center justify-between p-2 rounded-md bg-bg-secondary hover:bg-bg-elevated border border-boundary/40 cursor-pointer transition-colors"
+                >
+                  <span className="text-xs text-content-primary truncate mr-2">
+                    {task.title}
+                  </span>
+                  <Badge
+                    variant={
+                      task.priority === 'urgent'
+                        ? 'error'
+                        : task.priority === 'high'
+                        ? 'warning'
+                        : 'neutral'
+                    }
+                    size="sm"
+                  >
+                    {task.priority}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-4 rounded-md bg-bg-secondary/60 border border-boundary/40 text-center space-y-2">
+              <CheckCircle2 size={24} className="mx-auto text-status-success" />
+              <p className="text-xs text-content-secondary">
+                All caught up! No pending tasks for today.
+              </p>
+              <Link to="/planner">
+                <Button size="sm" variant="outline" icon={<Plus size={14} />}>
+                  Add Task
+                </Button>
+              </Link>
+            </div>
+          )}
         </Card>
 
         {/* Habits Status */}
         <Card variant="elevated" className="space-y-3">
           <SectionHeader
             title="Habit Streaks"
+            subtitle={`${completedHabitsCount}/${habits.length} done today`}
             action={
               <Link to="/habits">
-                <Button variant="ghost" size="sm">View</Button>
+                <Button variant="ghost" size="sm">Manage</Button>
               </Link>
             }
           />
-          <div className="p-4 rounded-md bg-bg-secondary/60 border border-boundary/40 text-center space-y-2">
-            <Flame size={24} className="mx-auto text-content-muted" />
-            <p className="text-xs text-content-secondary">
-              No active habits tracked yet.
-            </p>
-            <Link to="/habits">
-              <Button size="sm" variant="outline" icon={<Plus size={14} />}>
-                Create Habit
-              </Button>
-            </Link>
-          </div>
+          {habits.length > 0 ? (
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {habits.slice(0, 4).map((habit) => (
+                <div
+                  key={habit.id}
+                  onClick={() => toggleHabitToday(habit.id)}
+                  className="flex items-center justify-between p-2 rounded-md bg-bg-secondary hover:bg-bg-elevated border border-boundary/40 cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-2 truncate mr-2">
+                    <span
+                      className={`w-4 h-4 rounded-full flex items-center justify-center border text-[10px] ${
+                        habit.isCompletedToday
+                          ? 'bg-status-success border-status-success text-white'
+                          : 'border-boundary text-transparent'
+                      }`}
+                    >
+                      ✓
+                    </span>
+                    <span className="text-xs text-content-primary truncate">{habit.title}</span>
+                  </div>
+                  <span className="text-xs font-semibold text-accent-primary shrink-0">
+                    🔥 {habit.streakCount}d
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-4 rounded-md bg-bg-secondary/60 border border-boundary/40 text-center space-y-2">
+              <Flame size={24} className="mx-auto text-content-muted" />
+              <p className="text-xs text-content-secondary">
+                No active habits tracked yet.
+              </p>
+              <Link to="/habits">
+                <Button size="sm" variant="outline" icon={<Plus size={14} />}>
+                  Create Habit
+                </Button>
+              </Link>
+            </div>
+          )}
         </Card>
 
         {/* In-App Reminders */}
         <Card variant="elevated" className="space-y-3 md:col-span-2 lg:col-span-1">
           <SectionHeader
             title="Reminders"
+            subtitle={`${reminders.length} active`}
             action={<Badge variant="accent">In-App Alerts</Badge>}
           />
-          <div className="p-4 rounded-md bg-bg-secondary/60 border border-boundary/40 text-center space-y-2">
-            <Bell size={24} className="mx-auto text-content-muted" />
-            <p className="text-xs text-content-secondary">
-              No pending reminders.
-            </p>
-            <p className="text-[11px] text-content-muted">
-              Reminders notify you while the app is active with realistic browser fallbacks.
-            </p>
-          </div>
+          {reminders.length > 0 ? (
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {reminders.map((rem) => (
+                <div
+                  key={rem.id}
+                  className="p-2 rounded-md bg-bg-secondary border border-boundary/40 text-xs text-content-primary"
+                >
+                  <div className="font-medium">{rem.title}</div>
+                  <div className="text-[10px] text-content-muted mt-0.5">
+                    {new Date(rem.targetTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-4 rounded-md bg-bg-secondary/60 border border-boundary/40 text-center space-y-2">
+              <Bell size={24} className="mx-auto text-content-muted" />
+              <p className="text-xs text-content-secondary">
+                No pending reminders.
+              </p>
+              <p className="text-[11px] text-content-muted">
+                Reminders notify you while the app is active with realistic browser fallbacks.
+              </p>
+            </div>
+          )}
         </Card>
       </div>
     </div>

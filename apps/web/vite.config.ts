@@ -9,7 +9,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
       '@lifeos/core': path.resolve(__dirname, '../../packages/core/src'),
-      '@lifeos/database': path.resolve(__dirname, '../../packages/database/src/adapters/index.web.ts'),
+      '@lifeos/database': path.resolve(__dirname, '../../packages/database/src'),
       '@lifeos/shared-types': path.resolve(__dirname, '../../packages/shared-types/src'),
       '@lifeos/ui': path.resolve(__dirname, '../../packages/ui/src'),
       '@lifeos/alfred': path.resolve(__dirname, '../../packages/alfred/src'),

@@ -1,5 +1,5 @@
-import { DEFAULT_CATEGORIES, DEFAULT_ACCOUNTS, SCHEMA_VERSION, SQLITE_TABLES_DDL } from '../schema/ddl';
-import type { LifeOSDexieDB } from '../schema/dexie-schema';
+import { DEFAULT_CATEGORIES, DEFAULT_ACCOUNTS, SCHEMA_VERSION, SQLITE_TABLES_DDL } from '../schema/ddl.ts';
+import type { LifeOSDexieDB } from '../schema/dexie-schema.ts';
 
 export async function runSQLiteMigrations(db: any): Promise<void> {
   // Execute table creation and indexes
