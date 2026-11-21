@@ -67,10 +67,10 @@ export const AlfredView: React.FC = () => {
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-content-primary">
-              Alfred Assistant
+              Alfred Local Assistant
             </h1>
             <p className="text-xs text-content-secondary">
-              Local assistant & decision support interface
+              Offline placeholder interface & local message storage
             </p>
           </div>
         </div>
@@ -124,10 +124,10 @@ export const AlfredView: React.FC = () => {
           </div>
           <div className="bg-bg-elevated border border-boundary p-3.5 rounded-lg text-xs space-y-2">
             <p className="font-semibold text-content-primary">
-              Hello! I am Alfred, your local life assistant.
+              Hello! I am Alfred, your local offline assistant placeholder.
             </p>
             <p className="text-content-secondary leading-relaxed">
-              I analyze your stored finances, upcoming tasks, and habit streaks strictly on this device. How can I help you today?
+              I record your notes and prompts strictly inside your local IndexedDB. Intelligent automated reasoning is not yet active in this sprint, and external cloud AI is completely disabled to protect your privacy.
             </p>
           </div>
         </div>
@@ -160,7 +160,7 @@ export const AlfredView: React.FC = () => {
                     msg.role === 'user' ? 'text-white/90' : 'text-accent-primary'
                   }`}
                 >
-                  {msg.role === 'user' ? 'You • Stored Locally' : 'Alfred • Local Offline Response'}
+                  {msg.role === 'user' ? 'You • Stored Locally' : 'Alfred • Offline Placeholder'}
                 </span>
                 <span
                   className={msg.role === 'user' ? 'text-white/70' : 'text-content-muted'}

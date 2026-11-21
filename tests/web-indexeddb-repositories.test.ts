@@ -5,6 +5,7 @@ import { IndexedDBAdapter } from '../packages/database/src/adapters/indexeddb/in
 import {
   TransactionRepository,
   TaskRepository,
+  ReminderRepository,
   HabitRepository,
   JournalRepository,
   SettingsRepository,
@@ -23,6 +24,7 @@ import {
 import type {
   Transaction,
   Task,
+  Reminder,
   Habit,
   JournalEntry,
   UserProfile,
@@ -327,84 +329,159 @@ describe('Genuine IndexedDB Dexie Persistence & Repositories', () => {
     await adapter.close();
   });
 
-  it('8. should survive database close and reopen with 100% data persistence', async () => {
-    const DB_NAME = 'test_persistence_lifecycle_db';
+  it('8. should survive database close and reopen across all 7 modules (simulated IndexedDB lifecycle test via fake-indexeddb)', async () => {
+    // =========================================================================
+    // SIMULATED INDEXEDDB LIFECYCLE TEST (fake-indexeddb)
+    // NOTE: This integration test exercises Dexie schema persistence and repository
+    // data retention across explicit connection close() and reopen() cycles using
+    // fake-indexeddb in Node.js. It verifies engine-level table and index survival.
+    // This is a simulated persistence test; it does NOT claim to replicate a full
+    // browser window reload or browser process termination, which requires a live PWA
+    // browser environment.
+    // =========================================================================
+    const DB_NAME = 'test_persistence_lifecycle_full_db';
 
-    // Phase 1: Open database, insert records across modules, then close
+    // Phase 1: Open database, populate data across ALL application modules, then close connection
     const adapter1 = new IndexedDBAdapter(DB_NAME);
     await adapter1.initialize();
 
     const txRepo1 = new TransactionRepository(adapter1);
     const taskRepo1 = new TaskRepository(adapter1);
+    const reminderRepo1 = new ReminderRepository(adapter1);
     const habitRepo1 = new HabitRepository(adapter1);
+    const journalRepo1 = new JournalRepository(adapter1);
+    const settingsRepo1 = new SettingsRepository(adapter1);
     const chatRepo1 = new ChatRepository(adapter1);
 
     const accounts = await adapter1.getDb().accounts.toArray();
     const categories = await adapter1.getDb().categories.toArray();
 
+    // 1. Transaction
     const persistentTx = await txRepo1.create({
       accountId: accounts[0].id,
       categoryId: categories[0].id,
-      amountMinor: 75000, // ₹750.00
+      amountMinor: 89000, // ₹890.00
       type: 'expense',
-      timestamp: '2026-11-20T09:00:00.000Z',
+      timestamp: '2026-11-21T10:00:00.000Z',
       userTimezone: 'Asia/Kolkata',
-      description: 'Persistent Espresso',
+      description: 'Persistent Coffee & Work',
     });
 
+    // 2. Task
     const persistentTask = await taskRepo1.create({
-      title: 'Persistent Verification Task',
+      title: 'Persistent Sprint Verification Task',
       priority: 'high',
       status: 'pending',
     });
 
+    // 3. Reminder
+    const persistentReminder = await reminderRepo1.create({
+      title: 'Tax Filing & Accounts Review',
+      targetTime: '2026-11-25T09:00:00.000Z',
+      recurrence: 'none',
+      status: 'pending',
+    });
+
+    // 4. Habit & Habit Log
     const persistentHabit = await habitRepo1.create({
-      title: 'Persistent Exercise Habit',
+      title: 'Persistent Exercise Routine',
       frequency: 'daily',
       targetDaysPerWeek: 5,
       isArchived: false,
     });
-    await habitRepo1.logCompletion(persistentHabit.id, '2026-11-20');
+    await habitRepo1.logCompletion(persistentHabit.id, '2026-11-21');
 
-    const session = await chatRepo1.createSession('Persistent Alfred Session');
-    const persistentChat = await chatRepo1.addMessage(session.id, 'user', 'Keep this offline note safe');
+    // 5. Journal Entry
+    const persistentJournal = await journalRepo1.create({
+      title: 'Persistence Integration Milestone',
+      content: 'Verifying full engine persistence across connection tear-down and re-open.',
+      mood: 'reflective',
+      tags: ['persistence', 'engineering'],
+    });
 
-    // Explicitly CLOSE the database
+    // 6. User Profile & App Settings
+    const profile1 = await settingsRepo1.getProfile();
+    await settingsRepo1.saveProfile({
+      ...profile1!,
+      name: 'Suriya Sivakumar',
+      currency: 'INR',
+    });
+
+    const settings1 = await settingsRepo1.getSettings();
+    await settingsRepo1.saveSettings({
+      ...settings1!,
+      themeMode: 'dark',
+      biometricsEnabled: true,
+    });
+
+    // 7. Alfred Offline Chat
+    const session = await chatRepo1.createSession('Persistent Standup Session');
+    const persistentChat = await chatRepo1.addMessage(session.id, 'user', 'Preserve my local notes offline');
+
+    // Explicitly CLOSE the database connection
     await adapter1.close();
-    assert.strictEqual(adapter1.isInitialized(), false, 'Database must be closed');
+    assert.strictEqual(adapter1.isInitialized(), false, 'Database connection 1 must be closed');
 
-    // Phase 2: Simulate browser reload by instantiating a fresh adapter connected to the same store
+    // =========================================================================
+    // Phase 2: Simulate reopen by opening a brand new adapter instance on the same store
+    // =========================================================================
     const adapter2 = new IndexedDBAdapter(DB_NAME);
     await adapter2.initialize();
-    assert.strictEqual(adapter2.isInitialized(), true, 'Fresh adapter must re-initialize successfully');
+    assert.strictEqual(adapter2.isInitialized(), true, 'Fresh adapter must re-initialize against persisted store');
 
     const txRepo2 = new TransactionRepository(adapter2);
     const taskRepo2 = new TaskRepository(adapter2);
+    const reminderRepo2 = new ReminderRepository(adapter2);
     const habitRepo2 = new HabitRepository(adapter2);
+    const journalRepo2 = new JournalRepository(adapter2);
+    const settingsRepo2 = new SettingsRepository(adapter2);
     const chatRepo2 = new ChatRepository(adapter2);
 
-    // Verify Transaction survived
+    // 1. Verify Transaction survived
     const loadedTx = await txRepo2.getById(persistentTx.id);
-    assert.ok(loadedTx, 'Transaction must survive database close and reopen');
-    assert.strictEqual(loadedTx.description, 'Persistent Espresso');
-    assert.strictEqual(loadedTx.amountMinor, 75000);
+    assert.ok(loadedTx, 'Transaction must survive close and reopen');
+    assert.strictEqual(loadedTx.description, 'Persistent Coffee & Work');
+    assert.strictEqual(loadedTx.amountMinor, 89000);
 
-    // Verify Task survived
+    // 2. Verify Task survived
     const loadedTask = await taskRepo2.getById(persistentTask.id);
-    assert.ok(loadedTask, 'Task must survive database close and reopen');
-    assert.strictEqual(loadedTask.title, 'Persistent Verification Task');
+    assert.ok(loadedTask, 'Task must survive close and reopen');
+    assert.strictEqual(loadedTask.title, 'Persistent Sprint Verification Task');
 
-    // Verify Habit & Logs survived
+    // 3. Verify Reminder survived
+    const loadedReminder = await reminderRepo2.getById(persistentReminder.id);
+    assert.ok(loadedReminder, 'Reminder must survive close and reopen');
+    assert.strictEqual(loadedReminder.title, 'Tax Filing & Accounts Review');
+    assert.strictEqual(loadedReminder.status, 'pending');
+
+    // 4. Verify Habit & Logs survived
     const loadedHabit = await habitRepo2.getById(persistentHabit.id);
-    assert.ok(loadedHabit, 'Habit must survive database close and reopen');
+    assert.ok(loadedHabit, 'Habit must survive close and reopen');
     const loadedLogs = await habitRepo2.getLogsForHabit(persistentHabit.id);
     assert.strictEqual(loadedLogs.length, 1);
-    assert.strictEqual(loadedLogs[0].completedDate, '2026-11-20');
+    assert.strictEqual(loadedLogs[0].completedDate, '2026-11-21');
 
-    // Verify Chat survived
+    // 5. Verify Journal survived
+    const loadedJournal = await journalRepo2.getById(persistentJournal.id);
+    assert.ok(loadedJournal, 'Journal entry must survive close and reopen');
+    assert.strictEqual(loadedJournal.title, 'Persistence Integration Milestone');
+    assert.strictEqual(loadedJournal.mood, 'reflective');
+
+    // 6. Verify User Profile & Settings survived
+    const loadedProfile = await settingsRepo2.getProfile();
+    assert.ok(loadedProfile, 'User profile must survive close and reopen');
+    assert.strictEqual(loadedProfile.name, 'Suriya Sivakumar');
+    assert.strictEqual(loadedProfile.currency, 'INR');
+
+    const loadedSettings = await settingsRepo2.getSettings();
+    assert.ok(loadedSettings, 'App settings must survive close and reopen');
+    assert.strictEqual(loadedSettings.biometricsEnabled, true);
+    assert.strictEqual(loadedSettings.themeMode, 'dark');
+
+    // 7. Verify Chat Session & Message survived
     const loadedMsgs = await chatRepo2.getMessages(session.id);
     assert.strictEqual(loadedMsgs.length, 1);
-    assert.strictEqual(loadedMsgs[0].content, 'Keep this offline note safe');
+    assert.strictEqual(loadedMsgs[0].content, 'Preserve my local notes offline');
 
     await adapter2.close();
   });

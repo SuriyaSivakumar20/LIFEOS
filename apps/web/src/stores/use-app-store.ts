@@ -121,7 +121,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   init: async () => {
     try {
-      set({ isInitializing: true, dbError: null, actionError: null });
+      set({ isInitializing: true, isDbReady: false, dbError: null, actionError: null });
       await initializeDatabase();
       const repos = getRepositories();
 
@@ -132,6 +132,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       const themeMode: ThemeMode = settings?.themeMode ?? 'dark';
 
+      // Load all data BEFORE declaring initialization complete
+      await get().refreshAll();
+
+      // Only mount and mark ready once BOTH DB init and data refresh succeed
       set({
         isDbReady: true,
         isInitializing: false,
@@ -139,10 +143,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         settings,
         themeMode,
       });
-
-      await get().refreshAll();
     } catch (err) {
-      console.error('Database initialization failed:', err);
+      console.error('Database initialization or initial data load failed:', err);
       set({
         isDbReady: false,
         isInitializing: false,
@@ -548,8 +550,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       // 1. Persist user message locally in IndexedDB
       await repos.chat.addMessage(sessionId, 'user', trimmed);
 
-      // 2. Persist local offline rule-based response (Zero external cloud AI)
-      const offlineGuidance = 'Note recorded locally in IndexedDB. External AI cloud services are disabled by default to protect your privacy.';
+      // 2. Persist local offline placeholder response (Zero external cloud AI)
+      const offlineGuidance = 'Note recorded in local IndexedDB. Alfred AI reasoning is not yet active in this sprint, and external cloud AI services are disabled to protect your privacy.';
       await repos.chat.addMessage(sessionId, 'assistant', offlineGuidance);
 
       await get().refreshChat();

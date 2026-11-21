@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './hooks/use-theme';
 import { AppShell } from './components/layout/AppShell';
 import { useAppStore } from './stores/use-app-store';
+import { ResetDatabaseModal } from './components/ui/ResetDatabaseModal';
 
 import { HomeView } from './pages/HomeView';
 import { MoneyView } from './pages/MoneyView';
@@ -24,6 +25,8 @@ export const App: React.FC = () => {
     retryInit,
     resetDatabaseSafely,
   } = useAppStore();
+
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
   useEffect(() => {
     init();
@@ -85,14 +88,20 @@ export const App: React.FC = () => {
                 Retry Initialization
               </button>
               <button
-                onClick={resetDatabaseSafely}
+                onClick={() => setIsResetModalOpen(true)}
                 className="w-full sm:w-auto px-4 py-2 bg-bg-elevated hover:bg-bg-secondary border border-boundary text-content-secondary hover:text-content-primary rounded-lg text-sm font-semibold transition-colors"
               >
-                Reset Database
+                Reset Database...
               </button>
             </div>
           </div>
         </div>
+
+        <ResetDatabaseModal
+          isOpen={isResetModalOpen}
+          onClose={() => setIsResetModalOpen(false)}
+          onConfirmReset={resetDatabaseSafely}
+        />
       </ThemeProvider>
     );
   }

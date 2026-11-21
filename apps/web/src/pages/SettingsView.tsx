@@ -17,15 +17,17 @@ import { SectionHeader } from '../components/ui/SectionHeader';
 import { useTheme } from '../hooks/use-theme';
 import { usePersistentStorage } from '../hooks/use-persistent-storage';
 import { useAppStore } from '../stores/use-app-store';
+import { ResetDatabaseModal } from '../components/ui/ResetDatabaseModal';
 
 export const SettingsView: React.FC = () => {
   const { theme, resolvedTheme, setTheme } = useTheme();
   const { isPersisted, isSupported, requestPersistence } = usePersistentStorage();
-  const { userProfile, updateProfile } = useAppStore();
+  const { userProfile, updateProfile, resetDatabaseSafely } = useAppStore();
 
   const [name, setName] = useState(userProfile?.name || 'User');
   const [selectedCurrency, setSelectedCurrency] = useState(userProfile?.currency || 'INR');
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
   useEffect(() => {
     if (userProfile) {
@@ -54,12 +56,14 @@ export const SettingsView: React.FC = () => {
     alert('JSON Backup restore with Zod schema validation is staged for Sprint 5.');
   };
 
-  const handleClearData = async () => {
-    if (confirm('CAUTION: Are you sure you want to permanently erase all local IndexedDB data? This action cannot be undone.')) {
-      if (typeof window !== 'undefined' && window.indexedDB) {
-        window.indexedDB.deleteDatabase('lifeos_indexeddb');
-        window.location.reload();
-      }
+  const handleClearData = () => {
+    setIsResetModalOpen(true);
+  };
+
+  const handleExecuteReset = async () => {
+    await resetDatabaseSafely();
+    if (typeof window !== 'undefined') {
+      window.location.reload();
     }
   };
 
@@ -270,6 +274,12 @@ export const SettingsView: React.FC = () => {
           </Button>
         </div>
       </Card>
+
+      <ResetDatabaseModal
+        isOpen={isResetModalOpen}
+        onClose={() => setIsResetModalOpen(false)}
+        onConfirmReset={handleExecuteReset}
+      />
     </div>
   );
 };
